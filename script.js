@@ -15,40 +15,57 @@ if (menuButton && nav) {
   });
 }
 
+const formatCounterValue = (element, value) => {
+  const mode = element.getAttribute('data-counter-format') || 'number';
+  if (mode === 'compact') {
+    const compactValue = value / 1000000;
+    const formatted = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(compactValue);
+    return `${formatted}M`;
+  }
+
+  const decimals = Number(element.getAttribute('data-counter-decimals') || 0);
+  return new Intl.NumberFormat('fr-FR', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(value);
+};
+
+const animateCounter = (element) => {
+  const target = Number(element.getAttribute('data-counter')) || 0;
+  const duration = 1200;
+  const start = performance.now();
+
+  const tick = (now) => {
+    const progress = Math.min((now - start) / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const value = target * eased;
+    element.textContent = formatCounterValue(element, value);
+    if (progress < 1) {
+      requestAnimationFrame(tick);
+    }
+  };
+
+  requestAnimationFrame(tick);
+};
+
 const counters = document.querySelectorAll('[data-counter]');
 if ('IntersectionObserver' in window) {
   const counterObserver = new IntersectionObserver(
     (entries, observer) => {
       entries.forEach((entry) => {
         if (!entry.isIntersecting) return;
-
-        const el = entry.target;
-        const target = Number(el.getAttribute('data-counter'));
-        const duration = 1100;
-        const start = performance.now();
-
-        const animate = (now) => {
-          const progress = Math.min((now - start) / duration, 1);
-          const value = Math.floor(target * progress);
-          el.textContent = new Intl.NumberFormat('fr-FR').format(value);
-          if (progress < 1) {
-            requestAnimationFrame(animate);
-          }
-        };
-
-        requestAnimationFrame(animate);
-        observer.unobserve(el);
+        animateCounter(entry.target);
+        observer.unobserve(entry.target);
       });
     },
-    { threshold: 0.5 }
+    { threshold: 0.45 }
   );
 
   counters.forEach((counter) => counterObserver.observe(counter));
 } else {
-  // Fallback: show final counts immediately when IntersectionObserver unsupported
   counters.forEach((el) => {
     const target = Number(el.getAttribute('data-counter')) || 0;
-    el.textContent = new Intl.NumberFormat('fr-FR').format(target);
+    el.textContent = formatCounterValue(el, target);
   });
 }
 
@@ -152,5 +169,84 @@ document.addEventListener('DOMContentLoaded', () => {
       img.onerror = () => tryNext(i + 1);
       img.src = candidates[i];
     })(0);
+  });
+});
+
+const tiltCards = document.querySelectorAll('.tilt-card[data-tilt]');
+if (tiltCards.length && window.matchMedia('(hover: hover)').matches) {
+  tiltCards.forEach((card) => {
+    const resetTilt = () => {
+      card.style.setProperty('--tilt-rotate-x', '0deg');
+      card.style.setProperty('--tilt-rotate-y', '0deg');
+    };
+
+    card.addEventListener('pointermove', (event) => {
+      const rect = card.getBoundingClientRect();
+      const offsetX = (event.clientX - rect.left) / rect.width - 0.5;
+      const offsetY = (event.clientY - rect.top) / rect.height - 0.5;
+      card.style.setProperty('--tilt-rotate-y', `${offsetX * 10}deg`);
+      card.style.setProperty('--tilt-rotate-x', `${-offsetY * 10}deg`);
+    });
+
+    card.addEventListener('pointerleave', resetTilt);
+    card.addEventListener('pointercancel', resetTilt);
+  });
+}
+
+const magneticTargets = document.querySelectorAll('.magnetic');
+if (magneticTargets.length && window.matchMedia('(hover: hover)').matches) {
+  magneticTargets.forEach((element) => {
+    const reset = () => {
+      element.style.transform = '';
+    };
+
+    element.addEventListener('pointermove', (event) => {
+      const rect = element.getBoundingClientRect();
+      const offsetX = (event.clientX - rect.left) / rect.width - 0.5;
+      const offsetY = (event.clientY - rect.top) / rect.height - 0.5;
+      element.style.transform = `translate3d(${offsetX * 10}px, ${offsetY * 8}px, 0) scale(1.03)`;
+    });
+
+    element.addEventListener('pointerleave', reset);
+    element.addEventListener('pointercancel', reset);
+  });
+}
+
+const parallaxTargets = document.querySelectorAll('.about-parallax');
+if (parallaxTargets.length) {
+  let parallaxTicking = false;
+  const updateParallax = () => {
+    const scrollY = window.scrollY;
+    parallaxTargets.forEach((element, index) => {
+      const depth = 0.04 + index * 0.03;
+      element.style.transform = `translate3d(0, ${scrollY * depth}px, 0) scale(1.06)`;
+    });
+    parallaxTicking = false;
+  };
+
+  window.addEventListener(
+    'scroll',
+    () => {
+      if (parallaxTicking) return;
+      parallaxTicking = true;
+      requestAnimationFrame(updateParallax);
+    },
+    { passive: true }
+  );
+
+  updateParallax();
+}
+
+const footerForms = document.querySelectorAll('.footer-form');
+footerForms.forEach((form) => {
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+
+    const status = form.querySelector('.newsletter-status');
+    if (status) {
+      status.textContent = 'Merci. Nous revenons vers vous rapidement.';
+    }
+
+    form.reset();
   });
 });
