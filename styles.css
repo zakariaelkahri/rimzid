@@ -97,7 +97,6 @@ img {
   object-fit: contain;
   display: block;
   border-radius: 8px;
-  filter: brightness(0) saturate(100%);
   background-color: transparent;
 }
 
