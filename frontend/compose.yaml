@@ -1,0 +1,2 @@
+# Run Docker Compose from the repository root:
+# docker compose up --build
